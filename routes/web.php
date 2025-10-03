@@ -85,6 +85,7 @@ Route::post('/update/{id}', [FinancialYearController::class, 'update'])->name('u
 Route::group(['prefix'=>'/masters/tex-details','as'=>'tax.'], function(){
 
 Route::get('/', [TaxController::class, 'index'])->name('index');
+//dello//
 Route::post('/', [TaxController::class, 'store'])->name('store');
 Route::get('/view', [TaxController::class, 'view'])->name('list');
 Route::get('/delete/{id}', [TaxController::class, 'destroy'])->name('delete');
