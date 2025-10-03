@@ -80,7 +80,7 @@ Route::post('/update/{id}', [FinancialYearController::class, 'update'])->name('u
 });
 
 
-//  Tax //
+//  tex //
 
 Route::group(['prefix'=>'/masters/tex-details','as'=>'tax.'], function(){
 
@@ -93,6 +93,7 @@ Route::post('/update/{id}', [TaxController::class, 'update'])->name('update');
 
 
 });
+
 
 
 
