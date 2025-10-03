@@ -56,6 +56,7 @@ Route::post('login-submit', [LoginController::class, 'login_post'])->name('login
 Route::get('/masters', [DashboardController::class, 'index'])->name('dashboard.index');
 
 //
+
 // Company Details Masters 
 Route::get('/masters/company-details/', [CompanyDetailController::class, 'index'])->name('masters.company-details.company-details');
 Route::post('/masters/company-details/', [CompanyDetailController::class, 'store'])->name('masters.company-details.store');
