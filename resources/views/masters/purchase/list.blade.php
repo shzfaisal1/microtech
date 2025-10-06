@@ -108,10 +108,7 @@
                         <table id="invoiceTable" class="table table-bordered table-striped w-100">
                             <thead class="table-light">
                                 <tr>
-                                     <th>ID</th>
-                      
-                                     
-                                     
+                                     <th>ID</th>                          
                                     <th>PO No</th>
                                     <th>PO Date</th>
                                     <th>Vendor</th>
