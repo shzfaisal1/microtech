@@ -21,47 +21,133 @@ use Illuminate\Support\Facades\Log;
 class PurchaseInvoiceController extends Controller
 {
     /**
+     * 
      * Display a listing of the resource.
      */
-    public function index(Request $request)
-    {
-        if ($request->ajax()) {
-            $query = Calculation::with(['vendor', 'buyer', 'consignee', 'financialYear', 'companyDetail']);
+    // public function indexold(Request $request)
+    // {
+    //     if ($request->ajax()) {
+    //         $query = Calculation::with(['vendor', 'buyer', 'consignee', 'financialYear', 'companyDetail']);
 
-            // Apply filters
-            if ($request->has('company_id') && $request->company_id != '') {
-                $query->where('company_id', $request->company_id);
-            }
+    //         // Apply filters
+    //         if ($request->has('company_id') && $request->company_id != '') {
+    //             $query->where('company_id', $request->company_id);
+    //         }
 
-            if ($request->has('financial_year') && $request->financial_year != '') {
-                $query->where('financial_year', $request->financial_year);
-            }
+    //         if ($request->has('financial_year') && $request->financial_year != '') {
+    //             $query->where('financial_year', $request->financial_year);
+    //         }
 
-            return DataTables::of($query)
-                ->addIndexColumn()
-                ->addColumn('vendor_id', fn($row) => $row->vendor->name ?? '')
-                ->addColumn('buyer_id', fn($row) => $row->buyer->buyer_name ?? '')
-                ->addColumn('consignee_id', fn($row) => $row->consignee->name ?? '')
-                ->addColumn('company_id', fn($row) => $row->companyDetail->company_name ?? '')
-                ->addColumn('financial_year', fn($row) => $row->financialYear->financial_year ?? '')
-                ->addColumn('action', function ($row) {
-                    $editUrl = route('purchase-invoice.edit', $row->invoice_number);
-                    $deleteUrl = route('purchase-invoice.delete', $row->invoice_number);
-                    return '
-                    <a href="javascript:void(0);" class="mr-1" data-id="' . $row->invoice_number  . '"><i class="fa fa-eye text-success" style="font-size:15px;"></i></a>
-                    <a href="' . $editUrl . '" class="mr-1"><i class="fa fa-edit text-primary" style="font-size:15px;"></i></a>
-                    <a href="' . $deleteUrl . '" onclick="return confirm(\'Are you sure?\');" class=""><i class="fa fa-trash text-danger" style="font-size:15px;"></i></a>';
-                })
-                ->rawColumns(['action'])
-                ->make(true);
+    //         return DataTables::of($query)
+    //             ->addIndexColumn()
+    //             ->addColumn('vendor_id', fn($row) => $row->vendor->name ?? '')
+    //             ->addColumn('buyer_id', fn($row) => $row->buyer->buyer_name ?? '')
+    //             ->addColumn('consignee_id', fn($row) => $row->consignee->name ?? '')
+    //             ->addColumn('company_id', fn($row) => $row->companyDetail->company_name ?? '')
+    //             ->addColumn('financial_year', fn($row) => $row->financialYear->financial_year ?? '')
+    //             ->addColumn('action', function ($row) {
+    //                 $editUrl = route('purchase-invoice.edit', $row->invoice_number);
+    //                 $deleteUrl = route('purchase-invoice.delete', $row->invoice_number);
+    //                 return '
+    //                 <a href="javascript:void(0);" class="mr-1" data-id="' . $row->invoice_number  . '"><i class="fa fa-eye text-success" style="font-size:15px;"></i></a>
+    //                 <a href="' . $editUrl . '" class="mr-1"><i class="fa fa-edit text-primary" style="font-size:15px;"></i></a>
+    //                 <a href="' . $deleteUrl . '" onclick="return confirm(\'Are you sure?\');" class=""><i class="fa fa-trash text-danger" style="font-size:15px;"></i></a>';
+    //             })
+    //             ->rawColumns(['action'])
+    //             ->make(true);
+    //     }
+
+    //     // For initial page load
+    //     $companies = CompanyDetail::all();
+    //     $financialYears = FinancialYear::all();
+    //     return view('masters.purchase.list', compact('companies', 'financialYears'));
+    // }
+
+public function index(Request $request)
+{
+    // If AJAX request, return JSON for DataTables
+    if ($request->ajax()) {
+
+        // Base query: join vendors, companies, stock location, financial year and products
+        $query = DB::table('new_purchase_order')
+            ->leftJoin('vendors as v', 'v.id', '=', 'new_purchase_order.vendor_id')
+            ->leftJoin('company_details as c', 'c.id', '=', 'new_purchase_order.company_id')
+            ->leftJoin('stock_locations as sl', 'sl.id', '=', 'new_purchase_order.stock_location_id')
+            ->leftJoin('financial_years as fy', 'fy.id', '=', 'new_purchase_order.financial_year_id')
+            ->leftJoin('new_purchase_order_product as pop', 'pop.po_id', '=', 'new_purchase_order.id')
+            ->leftJoin('new_purchase_order_calculation as calc', 'calc.po_id', '=', 'new_purchase_order.id')
+            ->select(
+                'new_purchase_order.id',
+                'new_purchase_order.po_no',
+                'new_purchase_order.po_date',
+                'new_purchase_order.vendor_id',
+                'new_purchase_order.company_id',
+                'new_purchase_order.stock_location_id',
+                'new_purchase_order.financial_year_id',
+                'v.name as vendor_name',
+                'c.company_name as company_name',
+                'sl.location_name as stock_location_name',
+                'fy.financial_year as financial_year_name',
+                DB::raw('COUNT(pop.id) as items_count'),
+                DB::raw('COALESCE(SUM(pop.amount),0) as products_total_amount'),
+                DB::raw('COALESCE(calc.final_total, 0) as final_total_calc'),
+                DB::raw('COALESCE(calc.net_amount, 0) as net_amount_calc')
+            )
+            ->groupBy(
+                'new_purchase_order.id',
+                'new_purchase_order.po_no',
+                'new_purchase_order.po_date',
+                'new_purchase_order.vendor_id',
+                'new_purchase_order.company_id',
+                'new_purchase_order.stock_location_id',
+                'new_purchase_order.financial_year_id',
+                'v.name','c.company_name','sl.location_name','fy.financial_year',
+                'calc.final_total','calc.net_amount'
+            );
+
+        // Apply filters if present
+        if ($request->filled('vendor_id')) {
+            $query->where('new_purchase_order.vendor_id', $request->vendor_id);
+        }
+        if ($request->filled('from') && $request->filled('to')) {
+            $from = Carbon::parse($request->from)->startOfDay();
+            $to   = Carbon::parse($request->to)->endOfDay();
+            $query->whereBetween('new_purchase_order.po_date', [$from, $to]);
         }
 
-        // For initial page load
-        $companies = CompanyDetail::all();
-        $financialYears = FinancialYear::all();
-        return view('masters.purchase.list', compact('companies', 'financialYears'));
+        return DataTables::of($query)
+            ->editColumn('po_date', fn($row) => $row->po_date ? Carbon::parse($row->po_date)->format('d-m-Y') : '')
+            ->addColumn('vendor', fn($row) => $row->vendor_name ?: '-')
+            ->addColumn('company', fn($row) => $row->company_name ?: '-')
+            ->addColumn('location', fn($row) => $row->stock_location_name ?: '-')
+            ->addColumn('items_count', fn($row) => (int)$row->items_count)
+            ->addColumn('products_total', function($row){
+                $final = (float)$row->final_total_calc;
+                return number_format($final > 0 ? $final : (float)$row->products_total_amount, 2);
+            })
+            ->addColumn('net_amount', fn($row) => number_format((float)$row->net_amount_calc, 2))
+            ->addColumn('actions', function ($row) {
+                $view = url('/masters/purchase-invoice/show/' . $row->id);
+                $edit = url('/masters/purchase-invoice/edit/' . $row->id);
+                $delete = url('/masters/purchase-invoice/' . $row->id);
+
+                return '
+                  <div class="action-buttons">
+                    <button data-id="'. $row->id .'" class="btn btn-sm btn-info btn-view">View</button>
+                    <a href="'. $edit .'" class="btn btn-sm btn-primary">Edit</a>
+                    <button data-id="'. $row->id .'" class="btn btn-sm btn-danger btn-delete">Delete</button>
+                  </div>
+                ';
+            })
+            ->rawColumns(['actions']) // allow HTML in actions
+            ->make(true);
     }
 
+    // Non-AJAX request: show Blade view
+    $companies = \App\Models\CompanyDetail::all();
+    $financialYears = \App\Models\FinancialYear::all();
+    return view('masters.purchase.list', compact('companies', 'financialYears'));
+}
 
     /**
      * Show the form for creating a new resource.
@@ -334,20 +420,25 @@ public function store(Request $request)
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(string $id)
+    public function destroy(Request $request)
     {
-
-        $calculation = Calculation::where('invoice_number', $id)->first();
-        if ($calculation) {
-            $calculation->delete();
+        // dd($request->all());
+        
+        $new_purchase= DB::table('new_purchase_order')->where('id',$request->id)->delete();
+        if($new_purchase){
+            
         }
+        // $calculation = Calculation::where('invoice_number', $id)->first();
+        // if ($calculation) {
+        //     $calculation->delete();
+        // }
 
-        $purchaseInvoices = PurchaseInvoice::where('invoice_number', $id)->get();
-        foreach ($purchaseInvoices as $invoice) {
-            $invoice->delete();
-        }
+        // $purchaseInvoices = PurchaseInvoice::where('invoice_number', $id)->get();
+        // foreach ($purchaseInvoices as $invoice) {
+        //     $invoice->delete();
+        // }
 
-        return  redirect()->back()->with('success', 'Invoice deleted successfully');
+        return  response()->json(['message' => 'working']);
     }
 
     public function search()

@@ -108,32 +108,19 @@
                         <table id="invoiceTable" class="table table-bordered table-striped w-100">
                             <thead class="table-light">
                                 <tr>
-                                    <th>Sr.No</th>
-                                    <th>Invoice No</th>
-                                    <th>Invoice Date</th>
+                                     <th>ID</th>
+                      
+                                     
+                                     
                                     <th>PO No</th>
                                     <th>PO Date</th>
-                                    <th>Duty Paid Date</th>
-                                    <th>Buyer</th>
-                                    <th>Consignee</th>
-                                    <th>Currency</th>
-                                    <th>Inward Date</th>
                                     <th>Vendor</th>
-                                    <th>Contact Person</th>
-                                    <th>Contact Phone</th>
-                                    <th>Net Amount</th>
-                                    <th>Courier</th>
-                                    <th>Discount</th>
-                                    <th>Tax1</th>
-                                    <th>Tax1(%)</th>
-                                    <th>Tax1 Amt</th>
-                                    <th>Tax2</th>
-                                    <th>Tax2(%)</th>
-                                    <th>Tax2 Amt</th>
-                                    <th>Grand Total</th>
                                     <th>Company</th>
-                                    <th>FY</th>
-                                    <th>Action</th>
+                                    <th>Location</th>
+                                    <th>Items</th>
+                                    <th>Total</th>
+                                    <th>Net</th>
+                                    <th>Actions</th>
                                 </tr>
                             </thead>
                         </table>
@@ -197,58 +184,43 @@
 @push('scripts')
 <script>
 $(document).ready(function () {
-  
-  let table = $('#invoiceTable').DataTable({
-    processing: true,
-    serverSide: true,
-    responsive: true,
-    scrollX: true,
-    ajax: {
-        url: "{{ route('purchase-invoice.index') }}",
-        data: function(d) {
-            d.company_id = $('#filter_company').val();
-            d.financial_year = $('#filter_financial_year').val();
-        }
-    },
-    order: [[0, 'desc']],
-    columns: [
-        { data: 'id', name: 'id' },
-        { data: 'invoice_number', name: 'invoice_number' },
-        { data: 'invoice_date', name: 'invoice_date' },
-        { data: 'po_no', name: 'po_no' },
-        { data: 'po_date', name: 'po_date' },
-        { data: 'duty_paid_date', name: 'duty_paid_date' },
-        { data: 'buyer_id', name: 'buyer_id' },
-        { data: 'consignee_id', name: 'consignee_id' },
-        { data: 'currency', name: 'currency' },
-        { data: 'inward_date', name: 'inward_date' },
-        { data: 'vendor_id', name: 'vendor_id' },
-        { data: 'contact_person', name: 'contact_person' },
-        { data: 'contact_perso_phone', name: 'contact_perso_phone' },
-        { data: 'net_amount', name: 'net_amount' },
-        { data: 'packing', name: 'packing' },
-        { data: 'discount', name: 'discount' },
-        { data: 'tax_type1', name: 'tax_type1' },
-        { data: 'tax_type1_value', name: 'tax_type1_value' },
-        { data: 'tax1_amount', name: 'tax1_amount' },
-        { data: 'tax_type2', name: 'tax_type2' },
-        { data: 'tax_type2_value', name: 'tax_type2_value' },
-        { data: 'tax2_amount', name: 'tax2_amount' },
-        { data: 'total', name: 'total' },
-        { data: 'company_id', name: 'company_id' },
-        { data: 'financial_year', name: 'financial_year' },
-        { data: 'action', name: 'action', orderable: false, searchable: false, className: 'text-center' }
-    ]
-});
 
-// Re-draw table on filter change
-$('#filter_company, #filter_financial_year').change(function() {
-    table.draw();
-});
+    let table = $('#invoiceTable').DataTable({
+        processing: true,
+        serverSide: true,
+        responsive: true,
+        scrollX: true,
+        ajax: {
+            url: "{{ route('purchase-invoice.index') }}",
+            data: function(d) {
+                d.company_id = $('#filter_company').val();
+                d.financial_year = $('#filter_financial_year').val();
+            }
+        },
+        order: [[0, 'desc']],
+        columns: [
+            { data: 'id', name: 'id' },
+            { data: 'po_no', name: 'po_no' },
+            { data: 'po_date', name: 'po_date' },
+            { data: 'vendor', name: 'vendor' },
+            { data: 'company', name: 'company' },
+            { data: 'location', name: 'location' },
+            { data: 'items_count', name: 'items_count', orderable: false, searchable: false },
+            { data: 'products_total', name: 'products_total', orderable: false, searchable: false },
+            { data: 'net_amount', name: 'net_amount', orderable: false, searchable: false },
+            { data: 'actions', name: 'actions', orderable: false, searchable: false, className: 'text-center' }
+        ]
+    });
 
+    // Re-draw table on filter change
+    $('#filter_company, #filter_financial_year').change(function() {
+        table.draw();
+    });
+
+    // View button -> opens modal and loads invoice details
     $('#invoiceTable').on('click', '.btn-view', function () {
         const id = $(this).data('id');
-      
+
         $('#invoiceDetailModal').modal('show');
         $('#invoiceDynamicInfo').html(`<div class="text-center my-3">
             <div class="spinner-border text-primary" role="status">
@@ -264,11 +236,11 @@ $('#filter_company, #filter_financial_year').change(function() {
                     const invoice = response.invoice;
                     const items = response.items;
 
-                    console.log(items)
-                     let editUrl = `/masters/purchase-invoice/edit/${id}`;
+                    let editUrl = `/masters/purchase-invoice/edit/${id}`;
+                    // set edit link (the <a id="link"> wraps the Edit button)
+                    $("#link").attr("href", editUrl);
 
-       
-                     $("#link").attr("href", editUrl);
+                    // populate summary fields
                     $('#net_amount').val(invoice.net_amount ?? '');
                     $('#packing_courier').val(invoice.packing ?? '');
                     $('#discount').val(invoice.discount ?? '');
@@ -280,6 +252,7 @@ $('#filter_company, #filter_financial_year').change(function() {
                     $('#total').val(invoice.total ?? '');
                     $('#round_off').val(invoice.round_off ?? '');
 
+                    // build header + items table HTML
                     let html = `
                         <div class="mb-3">
                             <div class="row gy-2">
@@ -288,7 +261,7 @@ $('#filter_company, #filter_financial_year').change(function() {
                                 <div class="col-md-6"><strong>Vendor:</strong> ${invoice.vendor?.name ?? ''}</div>
                                 <div class="col-md-6"><strong>Invoice No / Date:</strong> ${invoice.invoice_number} / ${invoice.invoice_date}</div>
                                 <div class="col-md-6"><strong>PO No / Date:</strong> ${invoice.po_no ?? '-'} / ${invoice.po_date ?? '-'}</div>
-                                <div class="col-md-6"><strong>Currency / Value:</strong> ${invoice.currency} / ${invoice.net_amount}</div>
+                                <div class="col-md-6"><strong>Currency / Value:</strong> ${invoice.currency ?? ''} / ${invoice.net_amount ?? ''}</div>
                                 <div class="col-md-6"><strong>Buyer:</strong> ${invoice.buyer?.buyer_name ?? ''}</div>
                                 <div class="col-md-6"><strong>Consignee:</strong> ${invoice.consignee?.name ?? ''}</div>
                                 <div class="col-md-6"><strong>Inward No/Date:</strong> ${invoice.invoice_number ?? ''} / ${invoice.inward_date ?? ''}</div>
@@ -320,7 +293,7 @@ $('#filter_company, #filter_financial_year').change(function() {
                             <td>${item.vc_no ?? ''}</td>
                             <td>${item.vc_date ?? ''}</td>
                             <td>${item.stock_location ?? ''}</td>
-                            <td>1</td>
+                            <td>${item.qty ?? 1}</td>
                             <td>${item.price_in_INR ?? ''}</td>
                             <td>${item.total ?? ''}</td>
                         </tr>`;
@@ -338,12 +311,33 @@ $('#filter_company, #filter_financial_year').change(function() {
             }
         });
     });
-
-      $('#editSummaryFields').on('click', function () {
-          $('.summary-fields input').prop('readonly', false).addClass('bg-light');
-         $(this).text('Now Editable').addClass('disabled');
-    });
+    
+     $('#invoiceTable').on('click', '.btn-delete', function () {
+         
+         let id = $(this).data('id');
+     
+             $.ajax({
+              url: '{{route("purchase-invoice.delete")}}',
+              method: 'GET', 
+              data: { id: id }, 
+              dataType: 'json', 
+              success: function(response) {
+              
+               $('#invoiceTable').DataTable().ajax.reload();
+              },
+              error: function(xhr, status, error) {
+              
+                console.error('Error:', error);
+              },
+              complete: function() {
+               
+                console.log('Request complete.');
+              }
+            });  
+          
+     });
+    
 });
-
 </script>
 @endpush
+

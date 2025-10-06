@@ -16,6 +16,7 @@ use App\Http\Controllers\ReminderController;
 use App\Http\Controllers\AccountController;
 use App\Http\Controllers\CurrencyController;
 use App\Http\Controllers\QuarterController;
+
 use App\Http\Controllers\StockLocationController;
 use App\Http\Controllers\LUTMasterController;
 use App\Http\Controllers\DesignationController;
@@ -350,7 +351,7 @@ Route::group(['prefix'=>'/masters/purchase-invoice'], function(){
     Route::post('/store', [PurchaseInvoiceController::class, 'store'])->name('purchase-invoice.store');
     Route::get('/edit/{id}', [PurchaseInvoiceController::class, 'edit'])->name('purchase-invoice.edit');
     Route::post('/update/{id}', [PurchaseInvoiceController::class, 'update'])->name('purchase-invoice.update');
-    Route::get('/delete/{id}', [PurchaseInvoiceController::class, 'destroy'])->name('purchase-invoice.delete');
+    Route::get('/delete/', [PurchaseInvoiceController::class, 'destroy'])->name('purchase-invoice.delete');
     Route::get('/show/{id}', [PurchaseInvoiceController::class, 'show'])->name('purchase-invoice.show');
     Route::get('/search', [PurchaseInvoiceController::class, 'search'])->name('purchase-invoice.search');
     Route::get('summary-data', [PurchaseInvoiceController::class, 'getSummaryData'])->name('purchase-invoice.summary-data');
