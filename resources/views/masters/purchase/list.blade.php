@@ -109,6 +109,7 @@
                             <thead class="table-light">
                                 <tr>
                                      <th>ID NEW</th>
+                                   
                                     <th>PO No</th>
                                     <th>PO Date</th>
                                     <th>Vendor</th>

@@ -21,6 +21,7 @@ use Illuminate\Support\Facades\Log;
 class PurchaseInvoiceController extends Controller
 {
     /**
+     * 
      * Display a listing of the resource.
      */
     // public function indexold(Request $request)
