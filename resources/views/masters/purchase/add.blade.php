@@ -3,7 +3,7 @@
 @section('main')
 
 <!--Page header-->
-						<div class="page-header">
+<div class="page-header">
     <div class="page-leftheader">
         <h4 class="page-title">Purchase Entry</h4>
         <ol class="breadcrumb pl-0">
@@ -18,19 +18,22 @@
 <div class="search-client-info">
     <div class="row">
         <div class="col-lg-12 col-md-12">
-            
             <div class="card">
                 <div class="card-body">
                     <div class="row">
                         <div class="col">
                             <div class="form-group">
                                 <label for="company_id">Company Name <span class="text-danger">*</span> :</label>
+                              
                                 <div class="input-group flex-nowrap">
                                     <select class="form-control select2-show-search form-control-sm" name="company_id" id="company_id" data-placeholder="Choose one (with searchbox)">
                                         <optgroup>
                                             @if(isset($companies) && count($companies) > 0)
                                                 @foreach($companies as $company)
-                                                    <option value="{{$company->id}}">{{$company->company_name}}</option>    
+                                                    <option value="{{$company->id}}"
+                                                        {{ isset($query) && $query->company_id == $company->id ? 'selected' : '' }}>
+                                                        {{$company->company_name}}
+                                                    </option>    
                                                 @endforeach
                                             @endif
                                         </optgroup>
@@ -52,7 +55,10 @@
                                         <optgroup>
                                             @if(isset($financial) && count($financial) > 0)
                                                 @foreach($financial as $value)
-                                                    <option value="{{$value->id}}">{{$value->financial_year}}</option>
+                                                    <option value="{{$value->id}}"
+                                                        {{ isset($query) && $query->financial_year_id == $value->id ? 'selected' : '' }}>
+                                                        {{$value->financial_year}}
+                                                    </option>
                                                 @endforeach
                                             @endif
                                         </optgroup>
@@ -81,15 +87,15 @@
                     <h3 class="card-title">Add Purchase Order</h3>
                 </div>
                 <div class="card-body">
-
+                    <input name="po_id" id="po_id"  value="{{ $query->id ?? '' }}" hidden>
                     <!-- PO No / Date -->
                     <div class="row">
                         <div class="col-md-12">
                             <div class="form-group">
                                 <label for="po_no">PO No / Date :</label>
                                 <div class="input-group">
-                                    <input type="text" name="invoice_number" id="po_no" class="form-control" value="{{ old('po_no', $po_no ?? '') }}" readonly>
-                                    <input type="date" name="invoice_date" id="po_date" class="form-control">
+                                    <input type="text" name="invoice_number" id="po_no" class="form-control" value="{{ $query->po_no ?? '' }}" readonly>
+                                    <input type="date" name="invoice_date" id="po_date" class="form-control" value="{{ $query->po_date ?? '' }}">
                                 </div>
                             </div>
                         </div>
@@ -102,9 +108,13 @@
                                 <label for="vendor_id">Vendor Name <span class="text-danger">*</span> :</label>
                                 <div class="input-group flex-nowrap">
                                     <select class="form-control select2-show-search" id="vendor_id" name="vendor_id" data-placeholder="Choose one (with searchbox)">
+                                        <option value="">Select Vendor</option>
                                         @if(isset($vendors) && count($vendors) > 0)
                                             @foreach($vendors as $vendor)
-                                                <option value="{{$vendor->id}}">{{$vendor->name}}</option>
+                                                <option value="{{$vendor->id}}"
+                                                    {{ isset($query) && $query->vendor_id == $vendor->id ? 'selected' : '' }}>
+                                                    {{$vendor->name}}
+                                                </option>
                                             @endforeach
                                         @endif
                                     </select>
@@ -114,74 +124,140 @@
                                         </a>
                                     </div>
                                 </div>
-                                <span class="text-danger d-block mt-1" id="vendor_add"></span>
+                                <span class="text-danger d-block mt-1" id="vendor_add">{{ $query->vendor_address ?? '' }}</span>
                             </div>
                         </div>
 
                         <div class="col-md-6">
                             <div class="form-group">
                                 <label for="stock_location">Stock Location :</label>
-                                <input type="text" class="form-control" name="stock_location" id="stock_location">
+                                <input type="text" class="form-control" name="stock_location" id="stock_location" value="{{ $query->stock_location_id ?? '' }}">
                             </div>
                         </div>
                     </div>
 
-                    <!-- Product Rows -->
-                    <div id="product-rows">
-                        <div class="row product-row mb-2">
-                            <div class="col-md">
-                                <div class="form-group">
-                                    <label>Make <span class="text-danger">*</span> :</label>
-                                    <select class="form-control select2-show-search product-select" name="product_id[]" id="product_id">
-                                        <option value="">Select Make</option>
-                                        @foreach($makes as $make)
-                                            <option value="{{ $make->id }}">{{ $make->name }}</option>
-                                        @endforeach
-                                    </select>
-                                </div>
-                            </div>
+                  <!-- Product Rows -->
+<div id="product-rows">
 
-                            <div class="col-md">
-                                <div class="form-group">
-                                    <label>Model <span class="text-danger">*</span> :</label>
-                                    <select class="form-control select2-show-search model-select" name="model_id[]" id="model_select">
-                                        <option value="">Select Model</option>
-                                    </select>
-                                </div>
-                            </div>
+    @if(isset($items) && $items->count())
+        @foreach($items as $index => $item)
+            <div class="row product-row mb-2" data-row-index="{{ $index }}">
+                <input type="hidden" name="item_id[]" value="{{ $item->id ?? '' }}" class="form-control item_id">
 
-                            <div class="col-md">
-                                <div class="form-group">
-                                    <label>Quantity</label>
-                                    <input type="number" name="quantity[]" class="form-control quantity-input" value="1" min="1">
-                                </div>
-                            </div>
-
-                            <div class="col-md">
-                                <div class="form-group">
-                                    <label>Rate</label>
-                                    <input type="number" name="rate[]" class="form-control rate-input" value="1" min="1">
-                                </div>
-                            </div>
-
-                            <div class="col-md">
-                                <div class="form-group">
-                                    <label>Amount <span class="text-danger">*</span> :</label>
-                                    <input type="number" name="amount[]" class="form-control amount-input">
-                                </div>
-                            </div>
-
-                            <div class="col-md-auto d-flex align-items-end">
-                                <button type="button" class="btn btn-danger remove-row">Delete</button>
-                            </div>
-                        </div>
+                <div class="col-md">
+                    <div class="form-group">
+                        <label>Make <span class="text-danger">*</span> :</label>
+                        <select class="form-control select2-show-search product-select" name="product_id[]">
+                            <option value="">Select Make</option>
+                            @foreach($makes as $make)
+                                <option value="{{ $make->id }}" {{ isset($item) && ($item->make_id ?? '') == $make->id ? 'selected' : '' }}>
+                                    {{ $make->name }}
+                                </option>
+                            @endforeach
+                        </select>
                     </div>
+                </div>
 
-                    <div class="row">
-                        <div class="col-md-12">
-                            <button type="button" id="add-more" class="btn btn-primary">Add More</button>
-                        </div>
+                <div class="col-md">
+                    <div class="form-group">
+                        <label>Model <span class="text-danger">*</span> :</label>
+                        <select class="form-control select2-show-search model-select" name="model_id[]">
+                            <option value="">Select Model</option>
+                            @if(isset($item) && ($item->model_id ?? '') != '')
+                                <option value="{{ $item->model_id }}" selected>{{ $item->model_name ?? '' }}</option>
+                            @endif
+                        </select>
                     </div>
+                </div>
+
+                <div class="col-md">
+                    <div class="form-group">
+                        <label>Quantity</label>
+                        <input type="number" name="quantity[]" class="form-control quantity-input" value="{{ $item->qty ?? 1 }}" min="1">
+                    </div>
+                </div>
+
+                <div class="col-md">
+                    <div class="form-group">
+                        <label>Rate</label>
+                        <input type="number" name="rate[]" class="form-control rate-input" value="{{ $item->rate ?? 0 }}" min="0" step="0.01">
+                    </div>
+                </div>
+
+                <div class="col-md">
+                    <div class="form-group">
+                        <label>Amount <span class="text-danger">*</span> :</label>
+                        <input type="number" name="amount[]" class="form-control amount-input" value="{{ $item->amount ?? 0 }}" step="0.01">
+                    </div>
+                </div>
+
+                <div class="col-md-auto d-flex align-items-end">
+                    <button type="button" class="btn btn-danger remove-row">Delete</button>
+                </div>
+            </div>
+        @endforeach
+    @else
+        {{-- Render one empty row for create --}}
+        <div class="row product-row mb-2">
+            <input type="hidden" name="item_id[]" value="">
+            <div class="col-md">
+                <div class="form-group">
+                    <label>Make <span class="text-danger">*</span> :</label>
+                    <select class="form-control select2-show-search product-select" name="product_id[]">
+                        <option value="">Select Make</option>
+                        @foreach($makes as $make)
+                            <option value="{{ $make->id }}">{{ $make->name }}</option>
+                        @endforeach
+                    </select>
+                </div>
+            </div>
+
+            <div class="col-md">
+                <div class="form-group">
+                    <label>Model <span class="text-danger">*</span> :</label>
+                    <select class="form-control select2-show-search model-select" name="model_id[]">
+                        <option value="">Select Model</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="col-md">
+                <div class="form-group">
+                    <label>Quantity</label>
+                    <input type="number" name="quantity[]" class="form-control quantity-input" value="1" min="1">
+                </div>
+            </div>
+
+            <div class="col-md">
+                <div class="form-group">
+                    <label>Rate</label>
+                    <input type="number" name="rate[]" class="form-control rate-input" value="0" min="0" step="0.01">
+                </div>
+            </div>
+
+            <div class="col-md">
+                <div class="form-group">
+                    <label>Amount <span class="text-danger">*</span> :</label>
+                    <input type="number" name="amount[]" class="form-control amount-input" value="0" step="0.01">
+                </div>
+            </div>
+
+            <div class="col-md-auto d-flex align-items-end">
+                <button type="button" class="btn btn-danger remove-row">Delete</button>
+            </div>
+        </div>
+    @endif
+</div>
+
+{{-- Button to add new row --}}
+<button type="button" id="add-more" class="btn btn-primary">Add More</button>
+
+
+                    <!--<div class="row">-->
+                    <!--    <div class="col-md-12">-->
+                    <!--        <button type="button" id="add-more" class="btn btn-primary">Add More</button>-->
+                    <!--    </div>-->
+                    <!--</div>-->
 
                 </div> <!-- card-body -->
             </div> <!-- card -->
@@ -196,45 +272,53 @@
             <div class="col-md-4">
                 <div class="form-group">
                     <label>Net Amount:</label>
-                    <input type="text" id="net_amount" class="form-control" readonly>
+                    <input type="text" id="net_amount" class="form-control" readonly value="{{ $calc->net_amount ?? '' }}">
                 </div>
             </div>
             <div class="col-md-4">
                 <label>Packing / Courier:</label>
-                <input type="number" id="packing" class="form-control form-control-sm" value="0" step="0.01">
+                <input type="number" id="packing" class="form-control form-control-sm" step="0.01" value="{{ $calc->packing ?? '' }}">
             </div>
             <div class="col-md-4">
                 <label>Discount:</label>
-                <input type="number" id="discount" class="form-control form-control-sm" value="0" step="0.01">
+                <input type="number" id="discount" class="form-control form-control-sm" step="0.01" value="{{ $calc->discount ?? '' }}">
             </div>
         </div>
 
         <div class="row g-2 mt-2">
             <div class="col-md-4">
                 <label>Taxable Amount:</label>
-                <input type="text" id="taxable_amount" name="taxable_amount" class="form-control form-control-sm" readonly>
+                <input type="text" id="taxable_amount" name="taxable_amount" class="form-control form-control-sm" value="{{ $calc->taxable_amount ?? '' }}" readonly>
             </div>
             <div class="col-md-4">
                 <label id="tax1_label">Tax 1:</label>
                 <div class="input-group flex-nowrap">
-                    <select id="tax1_select" class="select2-show-search form-control">
+                    <select id="tax1_select" name="tax1" class="select2-show-search form-control">
                         <option value="0">Select Tax</option>
                         @if(isset($taxes) && count($taxes) > 0)
                             @foreach($taxes as $tax)
-                                <option value="{{ $tax->tax_value }}">{{ $tax->tax_name }}</option>
+                                <option value="{{ $tax->tax_value }}"
+                                    {{ isset($calc) && ($calc->tax_type1_value ?? '') == $tax->tax_value ? 'selected' : '' }}>
+                                    {{ $tax->tax_name }}
+                                </option>
                             @endforeach
                         @endif
                     </select>
                 </div>
             </div>
+
+            {{-- Tax 2 --}}
             <div class="col-md-4">
                 <label id="tax2_label">Tax 2:</label>
                 <div class="input-group flex-nowrap">
-                    <select id="tax2_select" class="select2-show-search form-control">
+                    <select id="tax2_select" name="tax2" class="select2-show-search form-control">
                         <option value="0">Select Tax</option>
                         @if(isset($taxes) && count($taxes) > 0)
                             @foreach($taxes as $tax)
-                                <option value="{{ $tax->tax_value }}">{{ $tax->tax_name }}</option>
+                                <option value="{{ $tax->tax_value }}"
+                                   {{ isset($calc) && ($calc->tax_type2_value ?? '') == $tax->tax_value ? 'selected' : '' }}>
+                                    {{ $tax->tax_name }}
+                                </option>
                             @endforeach
                         @endif
                     </select>
@@ -245,37 +329,37 @@
         <div class="row g-2 mt-2">
             <div class="col-md-4">
                 <label>Tax 1 Amount:</label>
-                <input type="number" id="tax1_amount" class="form-control form-control-sm" readonly>
+                <input type="number" id="tax1_amount" class="form-control form-control-sm" value="{{ $calc->tax1_amount ?? '' }}" readonly >
             </div>
             <div class="col-md-4">
                 <label>Tax 2 Amount:</label>
-                <input type="number" id="tax2_amount" class="form-control form-control-sm" readonly>
+                <input type="number" id="tax2_amount" class="form-control form-control-sm" value="{{ $calc->tax2_amount ?? '' }}" readonly>
             </div>
             <div class="col-md-4">
                 <label>Total:</label>
-                <input type="number" id="subtotal_amount" class="form-control form-control-sm" readonly>
+                <input type="number" id="subtotal_amount" class="form-control form-control-sm" value="{{ $calc->final_total ?? '' }}" readonly>
             </div>
         </div>
 
         <div class="row g-2 mt-2">
             <div class="col-md-4">
                 <label>Round Off:</label>
-                <input type="number" id="round_off" class="form-control form-control-sm" readonly>
+                <input type="number" id="round_off" class="form-control form-control-sm" value="{{ $calc->round_off ?? '' }}" readonly>
             </div>
             <div class="col-md-4">
                 <label>Total:</label>
-                <input type="number" id="final_total" class="form-control form-control-sm fw-bold text-success" readonly>
+                <input type="number" id="final_total" class="form-control form-control-sm fw-bold text-success" value="{{ $calc->final_total ?? '' }}" readonly>
             </div>
             <div class="col-md-4">
                 <label>Advance:</label>
-                <input type="number" id="advance" class="form-control form-control-sm" value="0" step="0.01">
+                <input type="number" id="advance" class="form-control form-control-sm" value="{{ $calc->advance ?? '' }}" step="0.01">
             </div>
         </div>
 
         <div class="row mt-3">
             <div class="col-md-4">
                 <label>Payable:</label>
-                <input type="number" id="payable" class="form-control form-control-sm fw-bold text-primary" readonly>
+                <input type="number" id="payable" class="form-control form-control-sm fw-bold text-primary" value="{{ $calc->balance ?? '' }}"  readonly>
             </div>
         </div>
 
@@ -289,14 +373,12 @@
     </div>
 </div>
 
-						
-
 @endsection
 @push('scripts')
 
 <script>
 $(document).ready(function() {
-
+// calculateInvoice();
     // ===== Helper functions =====
     function toNum(val) { return Number(String(val || '').replace(/,/g, '')) || 0; }
 
@@ -471,6 +553,7 @@ $(document).ready(function() {
         $('#product-rows .product-row').each(function() {
             const $r = $(this);
             items.push({
+                id: $r.find('.item_id').val(),
                 product_id: $r.find('.product-select').val(),
                 model_id: $r.find('.model-select').val(),
                 quantity: toNum($r.find('.quantity-input').val()),
@@ -482,6 +565,7 @@ $(document).ready(function() {
         if (items.length === 0) { alert('Add at least one product'); return; }
 
         const payload = {
+             po_id: $('#po_id').val(),
             vendor_id: $('#vendor_id').val(),
             po_no: $('#po_no').val(),
             po_date: $('#po_date').val(),
@@ -518,12 +602,13 @@ $(document).ready(function() {
             dataType: 'json',
             headers: { 'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content') },
             success: function(res) {
+              
                 $btn.prop('disabled', false).text('Save Invoice');
-                if (res.success) {
-                    alert('Invoice saved successfully! ID: ' + res.purchase_invoice_id);
+                if (res.status) {
+                    alert(res.message);
                     // Optional: redirect to edit/view
                     // window.location.href = '/purchase-invoice/' + res.purchase_invoice_id + '/edit';
-                } else alert('Error: ' + (res.message || 'Unknown'));
+                }
             },
             error: function(xhr) {
                 $btn.prop('disabled', false).text('Save Invoice');

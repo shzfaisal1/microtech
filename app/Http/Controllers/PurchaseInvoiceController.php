@@ -18,6 +18,7 @@ use Illuminate\Support\Facades\Validator;
 use Carbon\Carbon;
 use App\Events\StockUpdateRequested;
 use Illuminate\Support\Facades\Log;
+use Barryvdh\DomPDF\Facade\Pdf;
 class PurchaseInvoiceController extends Controller
 {
     /**
@@ -170,87 +171,117 @@ public function index(Request $request)
      */
 
 
-
 public function store(Request $request)
 {
     $data = $request->all();
 
-    // Basic quick validation (expand as needed)
+    // simple validation: items must be present and be an array
     if (empty($data['items']) || !is_array($data['items'])) {
         return response()->json(['status' => 'error', 'message' => 'items are required and must be an array'], 422);
     }
 
     DB::beginTransaction();
     try {
-        // 1) Insert PO and get id
-        $po_id = DB::table('new_purchase_order')->insertGetId([
-            "vendor_id" => $request->vendor_id,
-            "po_date" => $request->po_date,
-            "po_no" => $request->po_no,
-            "company_id" => $request->company_id,
-            "financial_year_id" => $request->financial_year_id,
-            "stock_location_id" => $request->stock_location,
-          
-        ]);
+        // -------------------
+        // 1) Header: create or update
+        // -------------------
+        $incomingPoId = $request->input('po_id') ?? null;
+        
+       
+        $headerPayload = [
+            'vendor_id'         => $request->vendor_id ?? null,
+            'po_date'           => $request->po_date ?? null,
+            'po_no'             => $request->po_no ?? null,
+            'company_id'        => $request->company_id ?? null,
+            'financial_year_id' => $request->financial_year_id ?? null,
+            'stock_location_id' => $request->stock_location ?? null,
+            
+        ];
 
-        // 2) Insert products (bulk)
-        $itemsPayload = [];
+        if ($incomingPoId && DB::table('new_purchase_order')->where('id', $incomingPoId)->exists()) {
+            DB::table('new_purchase_order')->where('id', $incomingPoId)->update($headerPayload);
+            $po_id = $incomingPoId;
+            $action = 'updated';
+        } else {
+          
+          
+            $po_id = DB::table('new_purchase_order')->insertGetId($headerPayload);
+            $action = 'created';
+        }
+
+        // -------------------
+        // 2) Items: update existing / insert new / delete removed
+        // -------------------
+        $processedItemIds = []; // collect ids which we processed (existing + newly inserted)
+
         foreach ($data['items'] as $item) {
-            $itemsPayload[] = [
-                'po_id'    => $po_id,
-                'make_id'  => $item['product_id'] ?? null,
-                'model_id' => $item['model_id'] ?? null,
-                'qty'      => isset($item['quantity']) ? (float)$item['quantity'] : 0,
-                'rate'     => isset($item['rate']) ? (float)$item['rate'] : 0,
-                'amount'   => isset($item['amount']) ? (float)$item['amount'] : 0,
+            // Keep values as-is from payload
+            $itemId = $item['id'] ?? null;
+            $itemRow = [
+                'po_id'   => $po_id,
+                'make_id' => $item['product_id']  ?? null,
+                'model_id'=> $item['model_id']    ?? null,
+                'qty'     => $item['quantity']    ?? null,
+                'rate'    => $item['rate']        ?? null,
+                'amount'  => $item['amount']      ?? null,
               
             ];
+
+            if ($itemId && DB::table('new_purchase_order_product')->where('po_id',$incomingPoId)->where('id', $itemId)->exists()) {
+                // update existing item
+                DB::table('new_purchase_order_product')->where('id', $itemId)->update($itemRow);
+                $processedItemIds[] = $itemId;
+            } else {
+                // insert new item
+             
+                $newId = DB::table('new_purchase_order_product')->insertGetId($itemRow);
+                $processedItemIds[] = $newId;
+            }
         }
 
-        if (!empty($itemsPayload)) {
-            DB::table('new_purchase_order_product')->insert($itemsPayload);
-        }
-
-        // 3) Handle calculation data (accept both 'cal_data' or 'Cal_data' or 'calData')
-        $rawCal = $request->input('cal_data') ?? $request->input('Cal_data') ?? $request->input('calData') ?? [];
-
-        if (is_string($rawCal)) {
-            $rawCal = json_decode($rawCal, true) ?: [];
-        }
-
-        // columns to map/save
-        $calcColumns = [
-            'net_amount','packing','discount','taxable_amount',
-            'tax_type1_value','tax1_amount','tax_type2_value','tax2_amount',
-            'final_total','advance','balance'
-        ];
-
-        // prepare sanitized calc row
-        $calcRow = [
-            'po_id' => $po_id,
-            'updated_at' => Carbon::now(),
-        ];
-
-        foreach ($calcColumns as $col) {
-            $val = $rawCal[$col] ?? 0;
-            // ensure numeric
-            $calcRow[$col] = is_numeric($val) ? (float)$val : 0.0;
-        }
-
-        // Upsert behavior: if a calc row for this PO exists -> update, else insert
-        $exists = DB::table('new_purchase_order_calculation')->where('po_id', $po_id)->exists();
-
-        if ($exists) {
-            $updateData = $calcRow;
-            unset($updateData['po_id']); // don't change po_id
-            DB::table('new_purchase_order_calculation')
+        // delete items that exist in DB for this PO but were not submitted
+        if (!empty($processedItemIds)) {
+            DB::table('new_purchase_order_product')
                 ->where('po_id', $po_id)
-                ->update($updateData);
+                ->whereNotIn('id', $processedItemIds)
+                ->delete();
+        } else {
+            // if no processed ids (shouldn't happen because we validated items), delete all
+            DB::table('new_purchase_order_product')->where('po_id', $po_id)->delete();
+        }
+
+        // -------------------
+        // 3) Calculation: upsert by po_id (simple)
+        // -------------------
+        $rawCal = $request->input('cal_data') ?? $request->input('Cal_data') ?? $request->input('calData') ?? [];
+        if (is_string($rawCal)) {
+            $decoded = json_decode($rawCal, true);
+            $rawCal = is_array($decoded) ? $decoded : [];
+        }
+
+        $calcRow = [
+            'net_amount'       => $rawCal['net_amount'] ?? null,
+            'packing'          => $rawCal['packing'] ?? null,
+            'discount'         => $rawCal['discount'] ?? null,
+            'taxable_amount'   => $rawCal['taxable_amount'] ?? null,
+            'tax_type1_value'  => $rawCal['tax_type1_value'] ?? null,
+            'tax1_amount'      => $rawCal['tax1_amount'] ?? null,
+            'tax_type2_value'  => $rawCal['tax_type2_value'] ?? null,
+            'tax2_amount'      => $rawCal['tax2_amount'] ?? null,
+            'final_total'      => $rawCal['final_total'] ?? null,
+            'advance'          => $rawCal['advance'] ?? null,
+            'balance'          => $rawCal['balance'] ?? null,
+           
+        ];
+
+        // updateOrInsert using Query Builder
+        $existsCalc = DB::table('new_purchase_order_calculation')->where('po_id', $po_id)->exists();
+        if ($existsCalc) {
+            DB::table('new_purchase_order_calculation')->where('po_id', $po_id)->update($calcRow);
             $calcAction = 'updated';
         } else {
-            $insertData = $calcRow;
-            $insertData['created_at'] = Carbon::now();
-            DB::table('new_purchase_order_calculation')->insert($insertData);
+            $calcRow['po_id'] = $po_id;
+            DB::table('new_purchase_order_calculation')->insert($calcRow);
             $calcAction = 'inserted';
         }
 
@@ -258,20 +289,22 @@ public function store(Request $request)
 
         return response()->json([
             'status' => 'success',
-            'message' => 'Purchase order saved',
+            'message' => "Purchase order {$action} successfully",
             'po_id' => $po_id,
-            'cal_action' => $calcAction
-        ], 201);
+            'calc_action' => $calcAction
+        ], 200);
 
     } catch (\Throwable $ex) {
         DB::rollBack();
-        Log::error('PurchaseOrder store failed: '.$ex->getMessage(), [
+        Log::error('PurchaseOrder storeOrUpdate failed: '.$ex->getMessage(), [
             'trace' => $ex->getTraceAsString(),
             'request' => $request->all(),
         ]);
+         
+        }
         return response()->json(['status' => 'error', 'message' => 'Something went wrong', 'error' => $ex->getMessage()], 500);
     }
-}
+
 
 
 
@@ -306,23 +339,61 @@ public function store(Request $request)
     /**
      * Show the form for editing the specified resource.
      */
-    public function edit($id)
-    {
-        $invoice = Calculation::where('invoice_number', $id)->first();
-        $items = PurchaseInvoice::where('invoice_number', $id)->get();
-        $vendors = Vendor::all();
-        $taxes = Tax::all();
-        $buyers = Buyer::all();
-        $consignees = ConsigneeName::all();
-        $vendors = Vendor::all();
-        $companies = CompanyDetail::all();
+public function edit($id)
+{
+    // Header (single row)
+    $query = DB::table('new_purchase_order as po')
+        ->leftJoin('vendors as v', 'v.id', '=', 'po.vendor_id')
+        ->leftJoin('company_details as c', 'c.id', '=', 'po.company_id')
+        ->leftJoin('stock_locations as sl', 'sl.id', '=', 'po.stock_location_id')
+        ->leftJoin('financial_years as fy', 'fy.id', '=', 'po.financial_year_id')
+        ->select(
+            'po.id',
+            'po.po_no',
+            'po.po_date',
+            'po.vendor_id',
+            'po.company_id',
+            'po.stock_location_id',
+            'po.financial_year_id',
+            'v.name as vendor_name',
+            'c.company_name as company_name',
+            'sl.location_name as stock_location_name',
+            'fy.financial_year as financial_year_name'
+        )
+        ->where('po.id', $id)
+        ->first();
 
-        if (!$invoice) {
-            return redirect()->back()->with('error', 'Invoice not found');
-        }
-
-        return view('masters.purchase.edit', compact('invoice', 'items', 'vendors', 'taxes', 'buyers', 'consignees', 'companies'));
+    if (!$query) {
+        abort(404, 'Purchase order not found.');
     }
+
+    // Items (multiple rows)
+    $items = DB::table('new_purchase_order_product as pop')
+        ->where('pop.po_id', $id)
+        ->select('pop.*') // or join product/model tables for names
+        ->get();
+    // dd($items);
+    // Calculation (single row)
+    $calc = DB::table('new_purchase_order_calculation')
+        ->where('po_id', $id)
+        ->first();
+
+    // Data for selects/dropdowns
+    $buyers = Buyer::all();
+    $vendors = Vendor::all();
+    $taxes = Tax::where('status', 1)->get();
+    $companies = CompanyDetail::all();
+    $consignees = ConsigneeName::all();
+    $financial = FinancialYear::with('lut')->get();
+    $makes = Make::all();
+    $po_no = $this->generateQuotationNumberInternal($financial->first()?->id);
+
+    // Pass everything to view; use clear variable names
+    return view('masters.purchase.add', compact(
+       'query', 'items', 'calc', 'makes','buyers', 'consignees', 'vendors', 'taxes', 'companies', 'financial', 'po_no'
+    ));
+}
+
 
 
     /**
@@ -568,5 +639,55 @@ public function store(Request $request)
        
 
         
+    }
+    
+    
+    
+      public function pdf(Request $request)
+
+    {
+
+        $data = [
+
+            [
+
+                'quantity' => 2,
+
+                'description' => 'Gold',
+
+                'price' => '$500.00'
+
+            ],
+
+            [
+
+                'quantity' => 3,
+
+                'description' => 'Silver',
+
+                'price' => '$300.00'
+
+            ],
+
+            [
+
+                'quantity' => 5,
+
+                'description' => 'Platinum',
+
+                'price' => '$200.00'
+
+            ]
+
+        ];
+
+       
+
+        $pdf = Pdf::loadView('invoice', ['data' => $data]);
+
+       
+
+        return $pdf->download();
+
     }
 }
