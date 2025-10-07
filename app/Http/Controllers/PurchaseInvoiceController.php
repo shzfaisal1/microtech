@@ -132,13 +132,15 @@ public function index(Request $request)
                 $edit = url('/masters/purchase-invoice/edit/' . $row->id);
                 $delete = url('/masters/purchase-invoice/' . $row->id);
 
-                return '
-                  <div class="action-buttons">
-                    <button data-id="'. $row->id .'" class="btn btn-sm btn-info btn-view">View</button>
-                    <a href="'. $edit .'" class="btn btn-sm btn-primary">Edit</a>
-                    <button data-id="'. $row->id .'" class="btn btn-sm btn-danger btn-delete">Delete</button>
-                  </div>
-                ';
+            return '
+              <div class="action-buttons">
+                <button data-id="'. $row->id .'" class="btn btn-sm btn-info btn-view">View</button>
+                <button data-id="'. $row->id .'" class="btn btn-sm btn-secondary btn-print">Print</button>
+                <a href="'. $edit .'" class="btn btn-sm btn-primary">Edit</a>
+                <button data-id="'. $row->id .'" class="btn btn-sm btn-danger btn-delete">Delete</button>
+              </div>
+            ';
+
             })
             ->rawColumns(['actions']) // allow HTML in actions
             ->make(true);
@@ -313,25 +315,49 @@ public function store(Request $request)
      */
     public function show(string $id)
     {
-        $items = PurchaseInvoice::where('invoice_number', $id)->get();
-      
-        $invoice = Calculation::with(['vendor', 'buyer', 'consignee', 'financialYear', 'companyDetail'])
-        ->where('invoice_number', $id)
+           $invoice = DB::table('new_purchase_order as po')
+        ->leftJoin('vendors as v', 'v.id', '=', 'po.vendor_id')
+        ->leftJoin('company_details as c', 'c.id', '=', 'po.company_id')
+        ->leftJoin('stock_locations as sl', 'sl.id', '=', 'po.stock_location_id')
+        ->leftJoin('financial_years as fy', 'fy.id', '=', 'po.financial_year_id')
+        ->select(
+            'po.id',
+            'po.po_no',
+            'po.po_date',
+            'po.vendor_id',
+            'po.company_id',
+            'po.stock_location_id',
+            'po.financial_year_id',
+            'v.name as vendor_name',
+            'c.company_name as company_name',
+            'sl.location_name as stock_location_name',
+            'fy.financial_year as financial_year_name'
+        )
+        ->where('po.id', $id)
         ->first();
 
+    if (!$invoice) {
+        abort(404, 'Purchase order not found.');
+    }
 
-            if (!$invoice) {
+  $items = DB::table('new_purchase_order_product as pop')
+    ->leftJoin('makes as m', 'pop.make_id', '=', 'm.id')
+    ->leftJoin('model_details as md', 'pop.model_id', '=', 'md.id')
+    ->where('pop.po_id', $id)
+    ->select('pop.*', 'm.name as make_name', 'md.model_name as model_name')
+    ->get();
 
-                return response()->json([
-                    'status' => false,
-                    'message' => 'Invoice not found'
-                ]);
-            }
 
+
+    $calc = DB::table('new_purchase_order_calculation')
+        ->where('po_id', $id)
+        ->first();
+        
             return response()->json([
                 'status' => true,
                 'invoice' => $invoice,
-                'items' => $items
+                'items' => $items,
+                'cal' => $calc,
             ]);
     }
 
@@ -367,12 +393,13 @@ public function edit($id)
         abort(404, 'Purchase order not found.');
     }
 
-    // Items (multiple rows)
+ 
     $items = DB::table('new_purchase_order_product as pop')
         ->where('pop.po_id', $id)
-        ->select('pop.*') // or join product/model tables for names
+        ->Join('model_details as ml', 'ml.id', '=', 'pop.model_id')
+        ->select('pop.*','ml.model_name')
         ->get();
-    // dd($items);
+
     // Calculation (single row)
     $calc = DB::table('new_purchase_order_calculation')
         ->where('po_id', $id)
@@ -596,7 +623,7 @@ public function edit($id)
         
         $prefix = 'MIC';
 
-        $latestQuotation = PurchaseInvoice::where('po_no', 'LIKE', "%$fyShort%")
+        $latestQuotation = DB::table('new_purchase_order')->where('po_no', 'LIKE', "%$fyShort%")
             ->orderBy('id', 'desc')
             ->first();
       
@@ -643,45 +670,43 @@ public function edit($id)
     
     
     
-      public function pdf(Request $request)
+      public function pdf($id)
 
     {
-
-        $data = [
-
-            [
-
-                'quantity' => 2,
-
-                'description' => 'Gold',
-
-                'price' => '$500.00'
-
-            ],
-
-            [
-
-                'quantity' => 3,
-
-                'description' => 'Silver',
-
-                'price' => '$300.00'
-
-            ],
-
-            [
-
-                'quantity' => 5,
-
-                'description' => 'Platinum',
-
-                'price' => '$200.00'
-
-            ]
-
-        ];
-
        
+
+         $data = DB::table('new_purchase_order as po')
+        ->leftJoin('vendors as v', 'v.id', '=', 'po.vendor_id')
+        ->leftJoin('company_details as c', 'c.id', '=', 'po.company_id')
+        ->leftJoin('stock_locations as sl', 'sl.id', '=', 'po.stock_location_id')
+        ->leftJoin('financial_years as fy', 'fy.id', '=', 'po.financial_year_id')
+        ->select(
+            'po.id',
+            'po.po_no',
+            'po.po_date',
+            'po.vendor_id',
+            'po.company_id',
+            'po.stock_location_id',
+            'po.financial_year_id',
+            'v.name as vendor_name',
+            'c.company_name as company_name',
+            'sl.location_name as stock_location_name',
+            'fy.financial_year as financial_year_name'
+        )
+        ->where('po.id', $id)
+        ->first();
+        
+       
+           $items = DB::table('new_purchase_order_product as pop')
+        ->where('pop.po_id', $id)
+        ->select('pop.*') // or join product/model tables for names
+        ->get();
+   
+    $calc = DB::table('new_purchase_order_calculation')
+        ->where('po_id', $id)
+        ->first();
+
+    //   dd($calc);
 
         $pdf = Pdf::loadView('invoice', ['data' => $data]);
 

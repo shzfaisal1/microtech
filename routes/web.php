@@ -357,7 +357,7 @@ Route::group(['prefix'=>'/masters/purchase-invoice'], function(){
     Route::get('summary-data', [PurchaseInvoiceController::class, 'getSummaryData'])->name('purchase-invoice.summary-data');
      Route::post('/get/vendor/add', [PurchaseInvoiceController::class, 'vendors'])->name('purchase-invoice.vendor'); 
      Route::post('/generate-amc-quotation-number', [PurchaseInvoiceController::class, 'generateQuotationNumberAjax'])->name('purchase-invoice.generateQuotationNo');
-Route::get('invoice-pdf', [PurchaseInvoiceController::class, 'pdf']);
+    Route::get('invoice-pdf/{id}', [PurchaseInvoiceController::class, 'pdf']);
 });
 
 //reference

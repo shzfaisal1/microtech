@@ -2,10 +2,12 @@
 
 @section('main')
 <style>
-    .modal-fullscreen {
-        max-width: 98%;
-        margin: 1rem auto;
-    }
+  /* Small visual refinements */
+.modal-header .modal-title { font-size: 1rem; }
+.table td, .table th { vertical-align: middle; }
+.table thead th { font-size: .85rem; }
+.table tbody td { font-size: .9rem; }
+.modal-body .small { font-size: .8rem; }
 
     .dataTables_wrapper .dataTables_filter input,
     .dataTables_wrapper .dataTables_length select {
@@ -129,52 +131,74 @@
 </div>
 
 <!-- Invoice Detail Modal -->
-<div class="modal fade" id="invoiceDetailModal" tabindex="-1" role="dialog" aria-labelledby="invoiceDetailModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-xl" style="max-width: 95%;">
-        <div class="modal-content">
-            <div class="modal-header bg-primary text-white">
-                <h5 class="modal-title">Invoice Details</h5>
-             <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
 
-            </div>
-            <div class="modal-body" id="invoiceDetailContent">
-                <div id="invoiceDynamicInfo" class="mb-4"></div>
+<!-- Trigger not required if you open via JS -->
+<div class="modal fade" id="invoiceModal" tabindex="-1" role="dialog" aria-labelledby="invoiceModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered" role="document">
+    <div class="modal-content">
+      <div class="modal-header bg-light">
+        <h5 class="modal-title" id="invoiceModalLabel">Purchase Order</h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+      </div>
 
-                <div class="bg-light p-3 rounded shadow-sm summary-fields">
-                    <div class="row g-2">
-                        @php
-                        $fields = [
-                            'Net Amount' => 'net_amount',
-                            'Packing / Courier' => 'packing_courier',
-                            'Discount' => 'discount',
-                            'Duty (%)' => 'duty',
-                            'CHA (%)' => 'cha',
-                            'Taxable Amount' => 'taxable_amount',
-                            'Tax 1 (%)' => 'tax1',
-                            'Tax 2 (%)' => 'tax2',
-                            'Total' => 'total',
-                            'Round Off' => 'round_off',
-                        ];
-                        @endphp
-
-                        @foreach($fields as $label => $id)
-                        <div class="col-md-3 mb-2">
-                            <label class="small text-muted">{{ $label }}</label>
-                            <input type="text" id="{{ $id }}" class="form-control form-control-sm bg-white" readonly>
-                        </div>
-                        @endforeach
-
-                        <div class="col-12 text-end mt-2">
-                           
-                              <a href="" id="link"> <button class="btn btn-sm btn-outline-primary">  <i class="fas fa-edit"></i> Edit Summary Fields  </button></a>
-                          
-                        </div>
-                    </div>
-                </div>
-
-            </div>
+      <div class="modal-body">
+        <div class="row mb-2">
+          <div class="col-md-7">
+                <div class="font-weight-bold">Company Name</div>
+            <div><strong id="company_name">&nbsp;</strong></div>
+            <div class="small text-muted" id="company_extra">&nbsp;</div>
+          </div>
+          <div class="col-md-5 text-md-right">
+            <div class="small text-muted">Invoice / PO</div>
+            <div id="invoice_meta" class="font-weight-bold">&nbsp;</div>
+          </div>
         </div>
+
+        <div class="row mb-3">
+          <div class="col-md-6">
+            <div class="font-weight-bold">Vendor</div>
+            <div id="vendor_name">&nbsp;</div>
+            <div class="small text-muted" id="vendor_contact">&nbsp;</div>
+          </div>
+        </div>
+
+        <div class="table-responsive">
+          <table class="table table-sm table-bordered mb-0" id="invoice_items_table">
+            <thead class="thead-light">
+              <tr class="text-center">
+                <th>Sr. No.</th>
+                <th>Product Name</th>
+                <th>Model</th>
+                <th>Rate</th>
+                <th>Disc</th>
+                <th>Qty</th>
+                <th>Total</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+
+        <div class="row mt-3">
+          <div class="col-md-7">
+            <div class="small text-muted" id="notes">&nbsp;</div>
+          </div>
+          <div class="col-md-5">
+                 <div class="d-flex justify-content-between"><div class="text-muted">Net Amount</div><div id="net_amount_bottom" class="font-weight-bold">0.00</div></div>
+            <div class="d-flex justify-content-between"><div class="text-muted">Packing</div><div id="packing_amount">0.00</div></div>
+            <div class="d-flex justify-content-between"><div class="text-muted">Discount</div><div id="discount_amount">0.00</div></div>
+                   <div class="d-flex justify-content-between"><div class="text-muted">Taxable Amount</div><div id="taxable_amount">0.00</div></div>
+                       <div class="d-flex justify-content-between"><div class="text-muted">Tax 1</div><div id="tax1">0.00</div></div>
+                        <div class="d-flex justify-content-between"><div class="text-muted">Total</div><div id="total">0.00</div></div>
+                      </div>
+                    </div>
+                  </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">Close</button>
+        <button type="button" class="btn btn-primary btn-sm" id="printInvoiceBtn">Print</button>
+      </div>
     </div>
+  </div>
 </div>
 @endsection
 
@@ -215,99 +239,21 @@ $(document).ready(function () {
     });
 
     // View button -> opens modal and loads invoice details
-    $('#invoiceTable').on('click', '.btn-view', function () {
-        const id = $(this).data('id');
+    $('#invoiceTable').on('click', '', function () {
+    const id = $(this).data('id');
 
-        $('#invoiceDetailModal').modal('show');
-        $('#invoiceDynamicInfo').html(`<div class="text-center my-3">
+    $('#invoiceDetailModal').modal('show');
+    $('#invoiceDynamicInfo').html(`
+        <div class="text-center my-3">
             <div class="spinner-border text-primary" role="status">
               <span class="visually-hidden">Loading...</span>
             </div>
-        </div>`);
+        </div>
+    `);
 
-        $.ajax({
-            url:  "{{ url('/masters/purchase-invoice/show') }}/" + id,
-            method: 'GET',
-            success: function (response) {
-                if (response.status) {
-                    const invoice = response.invoice;
-                    const items = response.items;
+   
+});
 
-                    let editUrl = `/masters/purchase-invoice/edit/${id}`;
-                    // set edit link (the <a id="link"> wraps the Edit button)
-                    $("#link").attr("href", editUrl);
-
-                    // populate summary fields
-                    $('#net_amount').val(invoice.net_amount ?? '');
-                    $('#packing_courier').val(invoice.packing ?? '');
-                    $('#discount').val(invoice.discount ?? '');
-                    $('#duty').val(invoice.duty ?? '');
-                    $('#cha').val(invoice.cha ?? '');
-                    $('#taxable_amount').val(invoice.taxable_amount ?? '');
-                    $('#tax1').val(invoice.tax1_amount ?? '');
-                    $('#tax2').val(invoice.tax2_amount ?? '');
-                    $('#total').val(invoice.total ?? '');
-                    $('#round_off').val(invoice.round_off ?? '');
-
-                    // build header + items table HTML
-                    let html = `
-                        <div class="mb-3">
-                            <div class="row gy-2">
-                                <div class="col-md-6"><strong>Company:</strong> ${invoice.company_detail?.company_name ?? ''}</div>
-                                <div class="col-md-6"><strong>FY:</strong> ${invoice.financial_year?.financial_year ?? ''}</div>
-                                <div class="col-md-6"><strong>Vendor:</strong> ${invoice.vendor?.name ?? ''}</div>
-                                <div class="col-md-6"><strong>Invoice No / Date:</strong> ${invoice.invoice_number} / ${invoice.invoice_date}</div>
-                                <div class="col-md-6"><strong>PO No / Date:</strong> ${invoice.po_no ?? '-'} / ${invoice.po_date ?? '-'}</div>
-                                <div class="col-md-6"><strong>Currency / Value:</strong> ${invoice.currency ?? ''} / ${invoice.net_amount ?? ''}</div>
-                                <div class="col-md-6"><strong>Buyer:</strong> ${invoice.buyer?.buyer_name ?? ''}</div>
-                                <div class="col-md-6"><strong>Consignee:</strong> ${invoice.consignee?.name ?? ''}</div>
-                                <div class="col-md-6"><strong>Inward No/Date:</strong> ${invoice.invoice_number ?? ''} / ${invoice.inward_date ?? ''}</div>
-                            </div>
-                        </div>
-                        <table class="table table-bordered table-sm table-hover">
-                            <thead class="table-light text-center">
-                                <tr>
-                                    <th>Make</th>
-                                    <th>Model</th>
-                                    <th>Serial No</th>
-                                    <th>Condition</th>
-                                    <th>VC No</th>
-                                    <th>VC Date</th>
-                                    <th>Stock Location</th>
-                                    <th>Qty</th>
-                                    <th>Price In INR</th>
-                                    <th>Total</th>
-                                </tr>
-                            </thead>
-                            <tbody>`;
-
-                    items.forEach(item => {
-                        html += `<tr>
-                            <td>${item.product_id ?? ''}</td>
-                            <td>${item.model ?? ''}</td>
-                            <td>${item.serial_number ?? ''}</td>
-                            <td>${item.condition ?? ''}</td>
-                            <td>${item.vc_no ?? ''}</td>
-                            <td>${item.vc_date ?? ''}</td>
-                            <td>${item.stock_location ?? ''}</td>
-                            <td>${item.qty ?? 1}</td>
-                            <td>${item.price_in_INR ?? ''}</td>
-                            <td>${item.total ?? ''}</td>
-                        </tr>`;
-                    });
-
-                    html += `</tbody></table>`;
-                    $('#invoiceDynamicInfo').html(html);
-
-                } else {
-                    $('#invoiceDynamicInfo').html('<div class="alert alert-danger">Could not load invoice data.</div>');
-                }
-            },
-            error: function () {
-                $('#invoiceDynamicInfo').html('<div class="alert alert-danger">Something went wrong. Please try again later.</div>');
-            }
-        });
-    });
     
      $('#invoiceTable').on('click', '.btn-delete', function () {
          
@@ -333,8 +279,143 @@ $(document).ready(function () {
             });  
           
      });
+     
+     
+     // generate pdf 
+     
+     $('#invoiceTable').on('click', '.btn-print', function () {
+        const id = $(this).data('id');
+
+        alert(id);     
+
+        $.ajax({
+            url:  "{{ url('/masters/purchase-invoice/invoice-pdf') }}/" + id,
+            method: 'GET',
+            success: function (response) {
+                if (response.status) {
+                    
+                
+                } else {
+                }
+            },
+            error: function () {
+               
+            }
+        });
+    });  
+     //
+     
+     // to open modal//
+// utility: safe text set
+function setText(selector, value) {
+  $(selector).text(value === undefined || value === null ? '' : value);
+}
+
+// format currency (simple)
+function fmt(v) {
+  if (v === undefined || v === null || v === '') return '0.00';
+  var n = parseFloat(v);
+  if (isNaN(n)) return v;
+  return n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+$('#invoiceTable').on('click', '.btn-view', function () {
+  var id = $(this).data('id');
+
+  $.ajax({
+    url: "{{ url('/masters/purchase-invoice/show') }}/" + id,
+    method: 'GET',
+    dataType: 'json',
+    success: function (response) {
+        console.log(response);
+      if (!response || !response.status) {
+        $('#invoiceModal').modal('hide');
+        alert('Invoice not found');
+        return;
+      }
+
+      var invoice = response.invoice || {};
+      var items = Array.isArray(response.items) ? response.items : [];
+      var cal = response.cal || {};
+
+      // Header / meta
+      setText('#company_name', invoice.company_name || invoice.vendor_name || '');
+      var meta = [];
+      if (invoice.po_no) meta.push('PO: ' + invoice.po_no);
+      if (invoice.po_date) meta.push('Date: ' + invoice.po_date);
+      setText('#invoice_meta', meta.join(' | '));
+
+      // Vendor
+      setText('#vendor_name', invoice.vendor_name || '');
+      setText('#vendor_contact', invoice.contact_person || ''); // adjust key if available
+
+      // Notes
+      setText('#notes', (cal && cal.notes) ? cal.notes : '');
+
+      // Packing / discount / net amounts (use cal first, fallback to calculated)
+      setText('#packing_amount', fmt(cal.packing || cal.packing_amount || 0));
+      setText('#discount_amount', fmt(cal.discount || cal.discount_amount || 0));
+    setText('#taxable_amount', fmt(cal.taxable_amount || cal.taxable_amount || 0));
+    setText('#tax1', fmt(cal.tax1_amount || cal.tax1_amount || 0));
+       setText('#total', fmt(cal.final_total || cal.final_total || 0));
+    
+      // Items: rebuild tbody
+      var $tbody = $('#invoice_items_table tbody').empty();
+      if (items.length === 0) {
+        $tbody.append('<tr><td colspan="12" class="text-center">No items</td></tr>');
+      } else {
+        items.forEach(function (it, idx) {
+          // adapt keys from your pop.*; common keys: product_name, model, serial_no, imei, specification, warranty, packing, rate, discount, quantity, price, tax, total
+          var prod = it.make_name || it.make_name || '';
+          var model = it.model_name || '';
+          var rate = fmt(it.rate || it.price || 0);
+          var discount = fmt(it.discount || 0);
+          var qty = it.quantity || it.qty || 0;
+          var total = fmt(it.amount || it.price_total || it.price || 0);
+
+          var row = '<tr>' +
+            '<td class="text-center align-middle">' + (idx + 1) + '</td>' +
+            '<td class="align-middle">' + prod + '</td>' +
+            '<td class="text-center align-middle">' + model + '</td>' +
+            '<td class="text-right align-middle">' + rate + '</td>' +
+            '<td class="text-right align-middle">' + discount + '</td>' +
+            '<td class="text-center align-middle">' + qty + '</td>' +
+            '<td class="text-right align-middle">' + total + '</td>' +
+            '</tr>';
+          $tbody.append(row);
+        });
+      }
+
+      // Net amount: prefer cal.net_amount else compute sum of item totals
+      if (cal && (cal.net_amount !== undefined && cal.net_amount !== null)) {
+        setText('#net_amount', '₹' + fmt(cal.net_amount));
+        setText('#net_amount_bottom', '₹' + fmt(cal.net_amount));
+      } else {
+        // compute from items
+        var sum = 0;
+        items.forEach(function(it){
+          var t = parseFloat(it.total || it.price_total || it.price || 0);
+          if (!isNaN(t)) sum += t;
+        });
+        sum += parseFloat(cal.packing || 0) - parseFloat(cal.discount || 0 || 0);
+        setText('#net_amount', '₹' + fmt(sum));
+        setText('#net_amount_bottom', '₹' + fmt(sum));
+      }
+
+      // show modal after filling
+      $('#invoiceModal').modal('show');
+    },
+    error: function () {
+      $('#invoiceDynamicInfo').html('<div class="alert alert-danger">Something went wrong. Please try again later.</div>');
+    }
+  });
+});
+     
+     //
     
 });
+
+
 </script>
 @endpush
 

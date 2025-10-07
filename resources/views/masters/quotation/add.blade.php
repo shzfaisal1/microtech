@@ -1,6 +1,11 @@
 @extends('master')
 
 @section('main')
+<!-- Select2 CSS -->
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+
+<!-- Select2 JS -->
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 
 <!--Page header-->
 <div class="page-header">
@@ -236,23 +241,52 @@
                                                <div class="col">
                                     <div class="form-group">
                                         <label for="total">Note <span class="text-danger">*</span> :</label>
-                                        <textarea class="form-control" id="note" name="note" rows="2" readonly></textarea>
+                                        <textarea class="form-control" id="note" name="note" rows="1" ></textarea>
                                     </div>
                                 </div>
           
-                                                
+                                 
+                                            <div class="col">
+                                        <div class="form-group">
+                                            <label for="type">Type <span class="text-danger">*</span> :</label>
+                                            <div class="input-group mb-3 flex-nowrap">
+                                            <div class="form-check mr-3">
+                                                    <input class="form-check-input" type="radio" name="quotation_type" id="sales" value="sales" required>
+                                                    <label class="form-check-label" for="amc">
+                                                        Sales
+                                                    </label>
+                                                </div>
+                                                <div class="form-check mr-3">
+                                                    <input class="form-check-input" type="radio" name="quotation_type" id="amc" value="AMC" required>
+                                                    <label class="form-check-label" for="amc">
+                                                        AMC
+                                                    </label>
+                                                </div>
+                                    
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="radio" name="quotation_type" id="stamping" value="Stamping">
+                                                    <label class="form-check-label" for="stamping">
+                                                        Stamping
+                                                    </label>
+                                                </div>
+                                    
+                                            </div>
+                                        </div>
+                                    </div>               
                                             </div>
 
-                                                               <div class="row">
-    <div class="col">
-        <div class="form-group d-flex align-items-center" style="margin-top: 10px;">
-            <div class="custom-control custom-checkbox">
-                <input type="checkbox" class="custom-control-input" value="0" id="hallmarking" name="hallmarking_quotation" {{ old('hallmarking_quotation', $quotation->hallmarking_quotation ?? false) ? 'checked' : '' }}>
-                <label class="custom-control-label" for="hallmarking">Hallmarking Quotation</label>
-            </div>
-        </div>
-    </div>
-</div>
+                                                   <div class="row" id="period">
+                                                	<div class="col-md-6">
+                                            	    <div class="form-group">
+                                            	        <label for="uname">From/To  <span class="text-danger">*</span> :</label>
+                                            	        <div class="input-group mb-3">
+                                            	            <input type="date" class="form-control" id="quotation_no" name="quotation_no" >
+
+                                            	            <input type="date" class="form-control" placeholder="" name="quotation_date" id="quotation_date">
+                                            	        </div>
+                                            	    </div>
+                                            	</div>
+                                                </div>
 							    	</div>
       
 							    </div>
@@ -271,161 +305,152 @@
             <div class="card">
                 <div class="card-body">
 
-                    <!-- Row 1: Make, Model, Capacity -->
-                    <div class="row">
-                        <!-- Make -->
-                        <div class="col">
-                            <div class="form-group">
-                                <label for="make_id">Make <span class="text-danger">*</span> :</label>
-                                <div class="input-group mb-3 flex-nowrap">
-                                    <select class="form-control select2-show-search" id="make_id" name="make_id" data-placeholder="Choose Make">
-                                        <option value="">Select Make</option>
-                                        @foreach($makes as $make)
-                                        <option value="{{ $make->id }}">{{ $make->name }}</option>
-                                        @endforeach
-                                    </select>
-                                    <div class="input-group-append">
-                                        <a href="{{ route('make.create') }}" class="btn btn-light"><i class="fa fa-plus text-success"></i></a>
-                                        
+                    <!-- Repeating block -->
+                    <div class="product-block border rounded p-3 mb-3" id="product-rows">
+
+                        <!-- Row 1 -->
+                        <div class="row">
+                            <div class="col">
+                                <div class="form-group">
+                                    <label for="make_id">Make <span class="text-danger">*</span> :</label>
+                                    <div class="input-group mb-3 flex-nowrap">
+                                        <select class="form-control select2-show-search" name="make_id[]" data-placeholder="Choose Make">
+                                            <option value="">Select Make</option>
+                                            @foreach($makes as $make)
+                                            <option value="{{ $make->id }}">{{ $make->name }}</option>
+                                            @endforeach
+                                        </select>
+                                        <div class="input-group-append">
+                                            <a href="{{ route('make.create') }}" class="btn btn-light"><i class="fa fa-plus text-success"></i></a>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
-                        </div>
 
-                        <!-- Model -->
-                        <div class="col">
-                            <div class="form-group">
-                                <label for="model_id">Model <span class="text-danger">*</span> :</label>
-                                <div class="input-group mb-3 flex-nowrap">
-                                    <select class="form-control select2-show-search" id="model_id" name="model_id" data-placeholder="Choose Model">
-                                        <option value="">Select Model</option>
-                                     
-                                    
-                                    
-                                    </select>
-                                    <div class="input-group-append">
-                                        <a href="{{ route('model.index') }}" class="btn btn-light"><i class="fa fa-plus text-success"></i></a>
-                                       
+                            <div class="col">
+                                <div class="form-group">
+                                    <label for="model_id">Model <span class="text-danger">*</span> :</label>
+                                    <div class="input-group mb-3 flex-nowrap">
+                                        <select class="form-control select2-show-search" name="model_id[]" data-placeholder="Choose Model">
+                                            <option value="">Select Model</option>
+                                        </select>
+                                        <div class="input-group-append">
+                                            <a href="{{ route('model.index') }}" class="btn btn-light"><i class="fa fa-plus text-success"></i></a>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
-                        </div>
 
-                        <!-- Capacity -->
-                        <div class="col">
-                            <div class="form-group">
-                                <label for="capacity">Capacity :</label>
-                                <input type="text" class="form-control" name="capacity" id="capacity">
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Row 2: Readability, Calibration, Calibration Charge -->
-                    <div class="row">
-                        <!-- Readability -->
-                        <div class="col">
-                            <div class="form-group">
-                                <label for="readability">Readability :</label>
-                                <input type="text" class="form-control" name="readability" id="readability">
-                            </div>
-                        </div>
-
-                        <!-- Calibration -->
-                        <div class="col">
-                            <div class="form-group">
-                                <label for="calibration">Calibration :</label>
-                                <input type="text" class="form-control" name="calibration" id="calibration">
-                            </div>
-                        </div>
-
-                        <!-- Calibration Charge -->
-                        <div class="col">
-                            <div class="form-group">
-                                <label for="calibration_charge">Calibration Charge :</label>
-                                <input type="text" class="form-control" name="calibration_charge" id="calibration_charge" value="0">
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Row 3: Pan Size, Price, Part Details -->
-                    <div class="row">
-                        <!-- Pan Size -->
-                        <div class="col">
-                            <div class="form-group">
-                                <label for="pan_size">Pan Size :</label>
-                                <input type="text" class="form-control" name="pan_size" id="pan_size">
-                            </div>
-                        </div>
-
-                        <!-- Price -->
-                        <div class="col">
-                            <div class="form-group">
-                                <label for="price">Price <span class="text-danger">*</span> :</label>
-                                <input type="number" class="form-control" name="item_price" id="item_price" value="0">
-                            </div>
-                        </div>
-
-                        <!-- Part Details -->
-                        <div class="col">
-                            <div class="form-group">
-                                <label for="part_details">Part Details :</label>
-                                <textarea class="form-control" name="part_details" id="part_details" rows="2"></textarea>
-                            </div>
-                        </div>
-                    </div>
-                                <div class="row">
-                                    <div class="col">
-                                        <button  class="btn btn-primary d-block m-auto" id="add_data">Add To Table</button>
-                                            
+                            <div class="col">
+                                <div class="form-group">
+                                    <label for="capacity">Capacity :</label>
+                                    <input type="text" class="form-control" name="capacity[]" />
                                 </div>
-                            
                             </div>
+                        </div>
+
+                        <!-- Row 2 -->
+                        <div class="row">
+                            <div class="col">
+                                <div class="form-group">
+                                    <label>Readability :</label>
+                                    <input type="text" class="form-control" name="readability[]" />
+                                </div>
+                            </div>
+                            <div class="col">
+                                <div class="form-group">
+                                    <label>Calibration :</label>
+                                    <input type="text" class="form-control" name="calibration[]" />
+                                </div>
+                            </div>
+                            <div class="col">
+                                <div class="form-group">
+                                    <label>Calibration Charge :</label>
+                                    <input type="text" class="form-control" name="calibration_charge[]" value="0" />
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Row 3 -->
+                        <div class="row">
+                            <div class="col">
+                                <div class="form-group">
+                                    <label>Pan Size :</label>
+                                    <input type="text" class="form-control" name="pan_size[]" />
+                                </div>
+                            </div>
+                            <div class="col">
+                                <div class="form-group">
+                                    <label>Price <span class="text-danger">*</span> :</label>
+                                    <input type="number" class="form-control" name="item_price[]" value="0" />
+                                </div>
+                            </div>
+                            <div class="col">
+                                <div class="form-group">
+                                    <label>Part Details :</label>
+                                    <textarea class="form-control" name="part_details[]" rows="1"></textarea>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Remove button -->
+                       
+                    </div>
+
+                    <!-- Add new block button -->
+                    <div class="text-center">
+                        <button type="button" id="add_new_block" class="btn btn-success">
+                            <i class="fa fa-plus"></i> Add New Row
+                        </button>
+                    </div>
+
                 </div> <!-- card-body -->
             </div> <!-- card -->
-        </div> <!-- col -->
-    </div> <!-- row -->
-</div> <!-- search-client-info -->
+        </div>
+    </div>
+</div>
+ <!-- search-client-info -->
 
 {{-- // --}}
 <!-- search-client-info -->
-<div class="search-client-info">
-                            <div class="row">
-							    <div class="col-lg-12 col-md-12">
-							    	<div class="card">
-							    		<div class="card-body">
-                                            <div class="table-responsive">
-                                                <table id="poentry_table" class="table table-striped table-bordered w-100">
-                                                    <thead>
-                                                        <tr>
-                                                            <th class="wd-15p">ID</th>
-                                                            <th class="wd-15p">Make</th>
-                                                            <th class="wd-15p">Model</th>
-                                                            <th class="wd-15p">Capacity</th>
-                                                            <th class="wd-15p">Readability</th>
-                                                            <th class="wd-15p">Calibration</th>
-                                                            <th class="wd-15p">Calibration Charge</th>
-                                                            <th class="wd-15p">Pan Size</th>
-                                                            <th class="wd-15p">Price</th>
-                                                            <th class="wd-15p">Description</th>
-                                                            <th class="wd-25p">Action</th>
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody>
+<!--<div class="search-client-info">-->
+<!--                            <div class="row">-->
+<!--							    <div class="col-lg-12 col-md-12">-->
+<!--							    	<div class="card">-->
+<!--							    		<div class="card-body">-->
+<!--                                            <div class="table-responsive">-->
+<!--                                                <table id="poentry_table" class="table table-striped table-bordered w-100">-->
+<!--                                                    <thead>-->
+<!--                                                        <tr>-->
+<!--                                                            <th class="wd-15p">ID</th>-->
+<!--                                                            <th class="wd-15p">Make</th>-->
+<!--                                                            <th class="wd-15p">Model</th>-->
+<!--                                                            <th class="wd-15p">Capacity</th>-->
+<!--                                                            <th class="wd-15p">Readability</th>-->
+<!--                                                            <th class="wd-15p">Calibration</th>-->
+<!--                                                            <th class="wd-15p">Calibration Charge</th>-->
+<!--                                                            <th class="wd-15p">Pan Size</th>-->
+<!--                                                            <th class="wd-15p">Price</th>-->
+<!--                                                            <th class="wd-15p">Description</th>-->
+<!--                                                            <th class="wd-25p">Action</th>-->
+<!--                                                        </tr>-->
+<!--                                                    </thead>-->
+<!--                                                    <tbody>-->
                                                       
                                                         
-                                                    </tbody>
-													<tfoot>
+<!--                                                    </tbody>-->
+<!--													<tfoot>-->
 										
-									</tfoot>
+<!--									</tfoot>-->
 
-                                                </table>
-                                            </div>
+<!--                                                </table>-->
+<!--                                            </div>-->
                                       
-							    		</div>
-							    	</div>
-							    </div>
-						    </div>
-							</div>
+<!--							    		</div>-->
+<!--							    	</div>-->
+<!--							    </div>-->
+<!--						    </div>-->
+<!--							</div>-->
 		<!-- End search-client-info -->
 					<div class="modal fade" id="poViewModal" tabindex="-1" aria-hidden="true">
 					<div class="modal-dialog modal-xl">
@@ -652,6 +677,14 @@ $(document).ready(function () {
 });
 
 $(document).ready(function () {
+    
+$('#sales').change(function(){
+  $('#period').addClass('d-none');
+})  
+    
+  $('#stamping,#amc').change(function(){
+  $('#period').removeClass('d-none');
+})   
  let rowId = 1;
 let editId = null;
 
@@ -882,8 +915,174 @@ $('#poentry_table tbody tr').each(function () {
 });
 
 
-
-
 </script>
+ <script>
+    function addProductRow() {
+       
+        let html = `
+                         <div class="row">
+                            <div class="col">
+                                <div class="form-group">
+                                    <label for="make_id">Make <span class="text-danger">*</span> :</label>
+                                    <div class="input-group mb-3 flex-nowrap">
+                                        <select class="form-control select2-show-search" name="make_id[]" data-placeholder="Choose Make">
+                                            <option value="">Select Make</option>
+                                            @foreach($makes as $make)
+                                            <option value="{{ $make->id }}">{{ $make->name }}</option>
+                                            @endforeach
+                                        </select>
+                                        <div class="input-group-append">
+                                            <a href="{{ route('make.create') }}" class="btn btn-light"><i class="fa fa-plus text-success"></i></a>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="col">
+                                <div class="form-group">
+                                    <label for="model_id">Model <span class="text-danger">*</span> :</label>
+                                    <div class="input-group mb-3 flex-nowrap">
+                                        <select class="form-control select2-show-search" name="model_id[]" data-placeholder="Choose Model">
+                                            <option value="">Select Model</option>
+                                        </select>
+                                        <div class="input-group-append">
+                                            <a href="{{ route('model.index') }}" class="btn btn-light"><i class="fa fa-plus text-success"></i></a>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="col">
+                                <div class="form-group">
+                                    <label for="capacity">Capacity :</label>
+                                    <input type="text" class="form-control" name="capacity[]" />
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Row 2 -->
+                        <div class="row">
+                            <div class="col">
+                                <div class="form-group">
+                                    <label>Readability :</label>
+                                    <input type="text" class="form-control" name="readability[]" />
+                                </div>
+                            </div>
+                            <div class="col">
+                                <div class="form-group">
+                                    <label>Calibration :</label>
+                                    <input type="text" class="form-control" name="calibration[]" />
+                                </div>
+                            </div>
+                            <div class="col">
+                                <div class="form-group">
+                                    <label>Calibration Charge :</label>
+                                    <input type="text" class="form-control" name="calibration_charge[]" value="0" />
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Row 3 -->
+                        <div class="row">
+                            <div class="col">
+                                <div class="form-group">
+                                    <label>Pan Size :</label>
+                                    <input type="text" class="form-control" name="pan_size[]" />
+                                </div>
+                            </div>
+                            <div class="col">
+                                <div class="form-group">
+                                    <label>Price <span class="text-danger">*</span> :</label>
+                                    <input type="number" class="form-control" name="item_price[]" value="0" />
+                                </div>
+                            </div>
+                            <div class="col">
+                                <div class="form-group">
+                                    <label>Part Details :</label>
+                                    <textarea class="form-control" name="part_details[]" rows="1"></textarea>
+                                </div>
+                            </div>
+                        </div>`;
+
+        // append and initialize
+        $('#product-rows').append(html);
+
+        // Initialize select2 on the newly added selects
+        $('#product-rows .product-row:last .select2-show-search').select2({
+            width: '100%',
+            placeholder: 'Select',
+            allowClear: true
+        });
+
+        // Calculate amount initially for the new row
+        recalcRow($('#product-rows .product-row:last'));
+    }
+$(document).ready(function() {
+  
+
+    // Function to create and append a product row
  
+     $('#add_new_block').click(function() {
+         
+        addProductRow();
+        
+    });
+   
+    function recalcRow($row) {
+        const qty = parseFloat($row.find('.quantity-input').val()) || 0;
+        const rate = parseFloat($row.find('.rate-input').val()) || 0;
+        const amount = qty * rate;
+        $row.find('.amount-input').val(amount.toFixed(2));
+    }
+
+    // Delegate: when make (product-select) changes -> load models by AJAX
+    $(document).on('change', '.product-select', function() {
+        const $makeSelect = $(this);
+        const makeId = $makeSelect.val();
+        const $row = $makeSelect.closest('.product-row');
+        const $modelSelect = $row.find('.model-select');
+
+        // clear existing options
+        $modelSelect.html('<option value="">Loading...</option>').trigger('change');
+
+        if (!makeId) {
+            // reset model select
+            $modelSelect.html('<option value="">Select Model</option>').trigger('change');
+            return;
+        }
+
+       
+    });
+
+    // Delegate: quantity or rate change -> recalc amount
+    $(document).on('input change', '.quantity-input, .rate-input', function() {
+        const $row = $(this).closest('.product-row');
+        recalcRow($row);
+    });
+
+    // Delegate: remove row
+    $(document).on('click', '.remove-row', function() {
+        const rowCount = $('#product-rows .product-row').length;
+        if (rowCount > 1) {
+            $(this).closest('.product-row').remove();
+        } else {
+            // if you want at least one row, just clear fields instead of removing
+            const $row = $(this).closest('.product-row');
+            $row.find('select').val(null).trigger('change');
+            $row.find('input[type="number"]').val(0);
+            $row.find('.amount-input').val('');
+        }
+    });
+
+    // Add row button click
+    $('#add-row-btn').on('click', function(e) {
+        e.preventDefault();
+        addProductRow();
+    });
+
+    // Add an initial row on page load
+    addProductRow();
+});
+</script>
+
 @endpush

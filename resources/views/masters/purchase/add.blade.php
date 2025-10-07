@@ -157,13 +157,14 @@
                         </select>
                     </div>
                 </div>
-
+               
                 <div class="col-md">
                     <div class="form-group">
                         <label>Model <span class="text-danger">*</span> :</label>
                         <select class="form-control select2-show-search model-select" name="model_id[]">
                             <option value="">Select Model</option>
                             @if(isset($item) && ($item->model_id ?? '') != '')
+                         
                                 <option value="{{ $item->model_id }}" selected>{{ $item->model_name ?? '' }}</option>
                             @endif
                         </select>
@@ -365,9 +366,16 @@
 
         <div class="row mt-3">
             <div class="col text-center">
+                
+                @if(isset($query))
                 <button type="submit" id="save_invoice" class="btn btn-success btn-sm px-4 py-2 rounded-pill shadow-sm">
-                    <i class="fa fa-save me-1"></i> Save Invoice
+                    <i class="fa fa-save me-1"></i> save
                 </button>
+                @else
+                   <button type="submit" id="save_invoice" class="btn btn-success btn-sm px-4 py-2 rounded-pill shadow-sm">
+                    <i class="fa fa-save me-1"></i> Update
+                </button>
+                @endif
             </div>
         </div>
     </div>
@@ -527,16 +535,16 @@ $(document).ready(function() {
     });
 
     // Financial Year → Generate PO No
-    $('#financial_year_id').change(function() {
-        const finYearId = $(this).val();
-        if (!finYearId) return;
-        const $poNo = $('#po_no');
-        $poNo.prop('disabled', true);
-        $.post('{{ route("purchase-invoice.generateQuotationNo") }}', { fin_year_id: finYearId, _token: '{{ csrf_token() }}' }, function(resp) {
-            if (resp && resp.status) $poNo.val(resp.po_no);
-            else alert(resp.message || 'Could not generate PO No.');
-        }).always(() => { $poNo.prop('disabled', false); });
-    });
+    // $('#financial_year_id').change(function() {
+    //     const finYearId = $(this).val();
+    //     if (!finYearId) return;
+    //     const $poNo = $('#po_no');
+    //     $poNo.prop('disabled', true);
+    //     $.post('{{ route("purchase-invoice.generateQuotationNo") }}', { fin_year_id: finYearId, _token: '{{ csrf_token() }}' }, function(resp) {
+    //         if (resp && resp.status) $poNo.val(resp.po_no);
+    //         else alert(resp.message || 'Could not generate PO No.');
+    //     }).always(() => { $poNo.prop('disabled', false); });
+    // });
 
     // ===== Save / Update Invoice =====
     $('#save_invoice').click(function(e) {
@@ -624,6 +632,47 @@ $(document).ready(function() {
     });
 
 });
+// onload event //
+$(function () {
+    // reusable function that returns the jqXHR so you can chain if needed
+    function generatePoNo(finYearId) {
+        if (!finYearId) return $.Deferred().resolve().promise();
+
+        const $poNo = $('#po_no');
+        $poNo.prop('disabled', true);
+
+        return $.post('{{ route("purchase-invoice.generateQuotationNo") }}', {
+            fin_year_id: finYearId,
+            _token: '{{ csrf_token() }}'
+        })
+        .done(function (resp) {
+            if (resp && resp.status) {
+                $poNo.val(resp.po_no);
+            } else {
+                alert(resp.message || 'Could not generate PO No.');
+            }
+        })
+        .fail(function () {
+            alert('Network error while generating PO No.');
+        })
+        .always(function () {
+            $poNo.prop('disabled', false);
+        });
+    }
+
+    // on change
+    $('#financial_year_id').on('change', function () {
+        const finYearId = $(this).val();
+        generatePoNo(finYearId);
+    });
+
+    // run on initial page load if a financial year is already selected
+    const initialFinYear = $('#financial_year_id').val();
+    if (initialFinYear) {
+        generatePoNo(initialFinYear);
+    }
+});
+
 </script>
 
 
